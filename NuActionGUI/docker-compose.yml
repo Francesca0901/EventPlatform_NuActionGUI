@@ -1,0 +1,12 @@
+version: '3' 
+services:
+  ag:
+    build: ./NuActionGUI
+    image: nag-develop
+    container_name: nag-app
+    stdin_open: true
+    ports:
+     - "127.0.0.1:5000:5000"
+    volumes:
+     - ./NuActionGUI:/app
+    restart: always

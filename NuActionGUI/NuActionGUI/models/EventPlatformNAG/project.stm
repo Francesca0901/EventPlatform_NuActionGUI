@@ -1,0 +1,73 @@
+USER Person
+
+anonymous Role VISITOR {
+    Person {
+        fullAccess
+    }
+
+    Event {
+        fullAccess
+    }
+
+    Category {
+        fullAccess
+    }
+
+    Ad {
+        fullAccess
+    }
+}
+
+default Role REGULARUSER {
+    Person {
+        fullAccess
+    }
+
+    Event {
+        fullAccess
+    }
+
+    Category {
+        fullAccess
+    }
+
+    Ad {
+        fullAccess
+    }
+}
+
+Role MODERATOR {
+    Person {
+        fullAccess
+    }
+
+    Event {
+        fullAccess
+    }
+
+    Category {
+        fullAccess
+    }
+
+    Ad {
+        fullAccess
+    }
+}
+
+Role ADMIN {
+    Person {
+        fullAccess
+    }
+
+    Event {
+        fullAccess
+    }
+
+    Category {
+        fullAccess
+    }
+
+    Ad {
+        fullAccess
+    }
+}
