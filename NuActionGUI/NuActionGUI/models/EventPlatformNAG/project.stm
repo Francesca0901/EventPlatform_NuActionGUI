@@ -2,15 +2,89 @@ USER Person
 
 anonymous Role VISITOR {
     Person {
-        fullAccess
+        read(moderates) # TODO: rethink
     }
 
     Event {
-        fullAccess
+        read(title)
+        read(description)
+        read(owner)
+        read(categories)
     }
 
     Category {
-        fullAccess
+        read(name)
+        read(events)
+        read(moderators)
+    }
+
+    Ad {
+        read(content)
+    }
+}
+
+default Role REGULARUSER extends VISITOR{
+    Person {
+        read(name)
+        read(surname)
+        read(role)
+
+        update(name) [self = caller]
+        update(surname) [self = caller]
+
+        read(gender) [self = caller]
+        read(email) [self = caller]
+
+        read(events) [self = caller and value.owner = self]
+        read(manages) [self = caller and value.managedBy->includes(self)]
+        read(attends) [self = caller and value.attendants->includes(self)]
+        read(requests) [self = caller and value.requesters->includes(self)]
+        read(subscriptions) [self = caller and value.subscribers->includes(self)]
+
+        # TODO: can we add or remove events?
+        add(events) [caller = self and value.owner = caller]
+        remove(events) [caller = self and value.owner = caller]
+        
+        add(manages) [caller = value.owner and value.attendants->includes(self) and value.managedBy->excludes(self)]
+        remove(manages) [caller = value.owner and self <> value.owner and value.managedBy->includes(self)]
+        
+        add(attends) [value.managedBy->includes(caller) and value.requesters->includes(value)]
+        remove(attends) [(caller = self or value.managedBy->includes(caller)) and value.attendants->includes(self) and value.managedBy->excludes(self)]
+        
+        add(requests) [caller = self and value.attendants->excludes(self) and value.requests->excludes(self)]
+        remove(requests) [(caller = self or value.managedBy->includes(caller)) and value.requesters->includes(self)]
+
+        add(subscriptions) []
+    }
+
+    Event {
+        create
+
+        read(attendants)
+        read(managedBy)
+
+        add(managedBy) [caller = self.owner and self.attendants->includes(value) and self.managedBy->excludes(value)]
+        remove(managedBy) [caller = self.owner and value <> self.owner and self.managedBy->includes(value)]
+
+        remove(attendants) [(caller = value or self.managedBy->includes(caller)) and self.attendants->includes(value) and self.managedBy->excludes(value)] # TODO: review this
+        
+        update(title),update(description) [self.managedBy->includes(caller)]
+
+        add(categories) [self.managedBy->includes(caller)]
+        remove(categories) [self.managedBy->includes(caller)]
+
+        add(requesters) [value = caller and self.attendants->excludes(caller) and self.requesters->excludes(caller)]
+
+        add(attendants) [self.managedBy->includes(caller) and self.requesters->includes(value)]
+        remove(requesters) [(value = caller and self.requesters->includes(caller)) or (self.managedBy->includes(caller) and self.requesters->includes(value))]
+        read(requesters) [self.managedBy->includes(caller)]
+    }
+
+    Category {
+        
+
+        add(events) [value.managedBy->includes(caller)]
+        remove(events) [value.managedBy->includes(caller)]
     }
 
     Ad {
@@ -18,7 +92,7 @@ anonymous Role VISITOR {
     }
 }
 
-default Role REGULARUSER {
+Role MODERATOR extends REGULARUSER{
     Person {
         fullAccess
     }
@@ -36,25 +110,7 @@ default Role REGULARUSER {
     }
 }
 
-Role MODERATOR {
-    Person {
-        fullAccess
-    }
-
-    Event {
-        fullAccess
-    }
-
-    Category {
-        fullAccess
-    }
-
-    Ad {
-        fullAccess
-    }
-}
-
-Role ADMIN {
+Role ADMIN extends REGULARUSER{
     Person {
         fullAccess
     }
