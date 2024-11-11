@@ -54,7 +54,10 @@ default Role REGULARUSER extends VISITOR{
         add(requests) [caller = self and value.attendants->excludes(self) and value.requests->excludes(self)]
         remove(requests) [(caller = self or value.managedBy->includes(caller)) and value.requesters->includes(self)]
 
-        add(subscriptions) []
+        add(subscriptions) [caller = self and value.subscribers->excludes(self)]
+        remove(subscriptions) [caller = self and value.subscribers->includes(self)]
+
+        remove(moderates) [caller = self and value.moderators->includes(self)]
     }
 
     Event {
@@ -81,14 +84,15 @@ default Role REGULARUSER extends VISITOR{
     }
 
     Category {
-        
+        add(subscribers) [caller = value and self.subscribers->excludes(value)]
+        remove(subscribers) [caller = value and self.subscribers->includes(value)]
+
+        remove(moderates) [caller = value and self.moderators->includes(value)] 
 
         add(events) [value.managedBy->includes(caller)]
         remove(events) [value.managedBy->includes(caller)]
-    }
 
-    Ad {
-        fullAccess
+        read(subscribers) [self.moderators->includes(caller)]
     }
 }
 
