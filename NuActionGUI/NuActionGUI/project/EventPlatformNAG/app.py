@@ -184,7 +184,7 @@ def error():
     return render_template('error.html', message = msg)
 
 @app.route('/')
-@secure(db,P(['RECOMMENDEVENTS', 'CORE']))
+@secure(db,P(['CORE']))
 def main():
     from project import main 
     return main(request)
@@ -211,21 +211,21 @@ def profile():
 
 
 @app.route('/update_user', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def update_user():
     from project import update_user 
     return update_user(request)
 
 
 @app.route('/join', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def join():
     from project import join 
     return join(request)
 
 
 @app.route('/leave', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def leave():
     from project import leave 
     return leave(request)
@@ -253,7 +253,7 @@ def subscribe():
 
 
 @app.route('/unsubscribe', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def unsubscribe():
     from project import unsubscribe 
     return unsubscribe(request)
@@ -262,7 +262,7 @@ def unsubscribe():
 
 
 @app.route('/events', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def events():
     from project import events 
     return events(request)
@@ -283,7 +283,7 @@ def view_event():
 
 
 @app.route('/edit_event', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def edit_event():
     from project import edit_event 
     return edit_event(request)
@@ -311,14 +311,14 @@ def remove_category():
 
 
 @app.route('/promote_manager', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def promote_manager():
     from project import promote_manager 
     return promote_manager(request)
 
 
 @app.route('/demote_manager', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def demote_manager():
     from project import demote_manager 
     return demote_manager(request)
@@ -332,21 +332,21 @@ def remove_attendee():
 
 
 @app.route('/accept_request', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def accept_request():
     from project import accept_request 
     return accept_request(request)
 
 
 @app.route('/reject_request', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def reject_request():
     from project import reject_request 
     return reject_request(request)
 
 
 @app.route('/analyze', methods=['POST', 'GET'])
-@secure(db,P(['ANALYTICS']))
+@secure(db,P(['CORE', 'ANALYTICS']))
 def analyze():
     from project import analyze 
     return analyze(request)

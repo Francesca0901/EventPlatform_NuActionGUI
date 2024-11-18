@@ -20,6 +20,9 @@ Purposes {
 
 Actual purposes {
     Person.subscribe CORE, 
+    Person.unsubscribe CORE,
+    Person.join CORE,
+    Person.leave CORE,
     Person.profile CORE,
     Person.users CORE,
     Person.user CORE,
@@ -27,6 +30,12 @@ Actual purposes {
     Event.create_event CORE,
     Event.view_event CORE,
     Event.update_event CORE,
+    Event.events CORE,
+    Event.edit_event CORE,
+    Event.promote_manager CORE,
+    Event.demote_manager CORE,
+    Event.accept_request CORE,
+    Event.reject_request CORE,
     Ad.get_personalize_ad CORE,
     main CORE,
 
@@ -35,8 +44,8 @@ Actual purposes {
     Person.send_advertisement_to_user MASSMARKETING,
     Ad.get_personalize_ad TARGETEDMARKETING,
     Event.analyze ANALYTICS,
-    Category.send_mass_advertisement MASSMARKETING,
-    main RECOMMENDEVENTS
+    Event.analyze CORE,
+    Category.send_mass_advertisement MASSMARKETING
 }
 
 Declared purposes {
