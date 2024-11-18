@@ -21,6 +21,14 @@ ADMIN = "ADMIN"
 # NONE and SYSTEM roles are not needed explicitly
 
 # PURPOSES
+TARGETEDMARKETING = "TARGETEDMARKETING"
+MASSMARKETING = "MASSMARKETING"
+RECOMMENDEVENTS = "RECOMMENDEVENTS"
+CORE = "CORE"
+ANALYTICS = "ANALYTICS"
+MARKETING = "MARKETING"
+FUNCTIONAL = "FUNCTIONAL"
+ANY = "ANY"
 
 
 
@@ -150,6 +158,9 @@ with app.app_context():
         def requests(self):    
             return requestsList(self, [x.requests for x in self.association_requesters_requests]) 
         
+        @property
+        def owner(self):
+            return self
         @property
         def role(self):
             return self.roles[0]

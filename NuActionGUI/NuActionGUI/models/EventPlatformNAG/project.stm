@@ -2,7 +2,7 @@ USER Person
 
 anonymous Role VISITOR {
     Person {
-        read(moderates) # TODO: rethink
+        read(moderates)
     }
 
     Event {
@@ -35,13 +35,12 @@ default Role REGULARUSER extends VISITOR{
         read(gender) [self = caller]
         read(email) [self = caller]
 
-        read(events) [self = caller and value.owner = self]
-        read(manages) [self = caller and value.managedBy->includes(self)]
-        read(attends) [self = caller and value.attendants->includes(self)]
-        read(requests) [self = caller and value.requesters->includes(self)]
-        read(subscriptions) [self = caller and value.subscribers->includes(self)]
+        read(events) [self = caller]
+        read(manages) [self = caller]
+        read(attends) [self = caller]
+        read(requests) [self = caller]
+        read(subscriptions) [self = caller]
 
-        # TODO: can we add or remove events?
         add(events) [caller = self and value.owner = caller]
         remove(events) [caller = self and value.owner = caller]
         
@@ -56,8 +55,6 @@ default Role REGULARUSER extends VISITOR{
 
         add(subscriptions) [caller = self and value.subscribers->excludes(self)]
         remove(subscriptions) [caller = self and value.subscribers->includes(self)]
-
-        remove(moderates) [caller = self and value.moderators->includes(self)]
     }
 
     Event {
@@ -66,19 +63,21 @@ default Role REGULARUSER extends VISITOR{
         read(attendants)
         read(managedBy)
 
-        add(managedBy) [caller = self.owner and self.attendants->includes(value) and self.managedBy->excludes(value)]
+        update(owner) [self.owner = null]
+        update(title) [self.owner = caller or self.managedBy->includes(caller)]
+        update(description) [self.owner = caller or self.managedBy->includes(caller)]
+        
+        add(managedBy) [caller = self.owner and (self.attendants->isEmpty() or self.attendants->includes(value)) and self.managedBy->excludes(value)]
         remove(managedBy) [caller = self.owner and value <> self.owner and self.managedBy->includes(value)]
 
-        remove(attendants) [(caller = value or self.managedBy->includes(caller)) and self.attendants->includes(value) and self.managedBy->excludes(value)] # TODO: review this
-        
-        update(title),update(description) [self.managedBy->includes(caller)]
+        remove(attendants) [(caller = value or self.managedBy->includes(caller)) and self.attendants->includes(value) and self.managedBy->excludes(value)]
 
-        add(categories) [self.managedBy->includes(caller)]
-        remove(categories) [self.managedBy->includes(caller)]
+        add(categories) [self.owner = caller or self.managedBy->includes(caller)]
+        remove(categories) [self.owner = caller or self.managedBy->includes(caller)]
 
         add(requesters) [value = caller and self.attendants->excludes(caller) and self.requesters->excludes(caller)]
 
-        add(attendants) [self.managedBy->includes(caller) and self.requesters->includes(value)]
+        add(attendants) [value = self.owner or (self.managedBy->includes(caller) and self.requesters->includes(value))]
         remove(requesters) [(value = caller and self.requesters->includes(caller)) or (self.managedBy->includes(caller) and self.requesters->includes(value))]
         read(requesters) [self.managedBy->includes(caller)]
     }
@@ -87,47 +86,56 @@ default Role REGULARUSER extends VISITOR{
         add(subscribers) [caller = value and self.subscribers->excludes(value)]
         remove(subscribers) [caller = value and self.subscribers->includes(value)]
 
-        remove(moderates) [caller = value and self.moderators->includes(value)] 
-
         add(events) [value.managedBy->includes(caller)]
         remove(events) [value.managedBy->includes(caller)]
-
-        read(subscribers) [self.moderators->includes(caller)]
     }
 }
 
 Role MODERATOR extends REGULARUSER{
     Person {
-        fullAccess
+        read(subscriptions) [self = caller]
+        remove(moderates) [caller = self and value.moderators->includes(self)]
+
+        read(email) [self.subscriptions->select(cate | cate.moderators->includes(caller))->size() > 0]
     }
 
     Event {
-        fullAccess
+        remove(categories) [value.moderators->includes(caller) and self.categories->includes(value)]
     }
 
     Category {
-        fullAccess
-    }
+        read(subscribers) [self.moderators->includes(caller)]
+        remove(moderators) [value = caller and self.moderators->includes(caller)]
 
-    Ad {
-        fullAccess
+        remove(events) [self.moderators->includes(caller) and self.events->includes(value)]
     }
 }
 
 Role ADMIN extends REGULARUSER{
     Person {
-        fullAccess
-    }
+        read(name)
+        read(surname)
+        read(role)
+        read(gender)
 
-    Event {
-        fullAccess
+        update(role) [value <> Role::VISITOR]
+
+        add(moderates) [value.moderators->excludes(self) and self.role = Role::MODERATOR]
+        remove(moderates) [value.moderators->includes(self)]
     }
 
     Category {
-        fullAccess
+        create
+        delete
+        update(name)
+
+        add(moderators) [self.moderators->excludes(value) and value.role = Role::MODERATOR]
+        remove(moderators) [self.moderators->includes(value)]
     }
 
     Ad {
-        fullAccess
+        create
+        delete
+        update(content)
     }
 }

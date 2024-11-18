@@ -17,6 +17,7 @@ def user(request):
 def profile(request):
     return render_template('profile.html', user=current_user, ad=get_personalize_ad({'user': current_user}))
 
+### need modify
 def update_user(request):
     user = Person.query.get(request.form["id"])
     if user.name != request.form["name"]:
