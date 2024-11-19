@@ -1,0 +1,14 @@
+version: '3' 
+services:
+  flask:
+    build: ./EventPlatformFlask
+    image: flask-develop
+    container_name: flask-app
+    ports:
+     - "127.0.0.1:5000:5000"
+    volumes:
+     - ./EventPlatformFlask:/app
+    restart: always
+    environment:
+      - PROJECT_NAME
+    command: flask --app src/app.py run --host=0.0.0.0
