@@ -204,7 +204,7 @@ def user():
 
 
 @app.route('/profile', methods=['POST', 'GET'])
-@secure(db,P(['TARGETEDMARKETING', 'CORE']))
+@secure(db,P(['CORE']))
 def profile():
     from project import profile 
     return profile(request)
@@ -232,14 +232,14 @@ def leave():
 
 
 @app.route('/add_moderator', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def add_moderator():
     from project import add_moderator 
     return add_moderator(request)
 
 
 @app.route('/remove_moderator', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def remove_moderator():
     from project import remove_moderator 
     return remove_moderator(request)
@@ -297,14 +297,14 @@ def update_event():
 
 
 @app.route('/manage_event', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def manage_event():
     from project import manage_event 
     return manage_event(request)
 
 
 @app.route('/remove_category', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def remove_category():
     from project import remove_category 
     return remove_category(request)
@@ -325,7 +325,7 @@ def demote_manager():
 
 
 @app.route('/remove_attendee', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def remove_attendee():
     from project import remove_attendee 
     return remove_attendee(request)
@@ -353,35 +353,35 @@ def analyze():
 
 
 @app.route('/categories', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def categories():
     from project import categories 
     return categories(request)
 
 
 @app.route('/create_category', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def create_category():
     from project import create_category 
     return create_category(request)
 
 
 @app.route('/view_category', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def view_category():
     from project import view_category 
     return view_category(request)
 
 
 @app.route('/edit_category', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def edit_category():
     from project import edit_category 
     return edit_category(request)
 
 
 @app.route('/update_category', methods=['POST', 'GET'])
-@secure(db,P([]))
+@secure(db,P(['CORE']))
 def update_category():
     from project import update_category 
     return update_category(request)

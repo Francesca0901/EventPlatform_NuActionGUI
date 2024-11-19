@@ -27,24 +27,37 @@ Actual purposes {
     Person.users CORE,
     Person.user CORE,
     Person.update_user CORE,
+    Person.add_moderator CORE,
+    Person.remove_moderator CORE,
+
     Event.create_event CORE,
     Event.view_event CORE,
     Event.update_event CORE,
+    Event.manage_event CORE,
+    Event.remove_category CORE,
     Event.events CORE,
     Event.edit_event CORE,
     Event.promote_manager CORE,
     Event.demote_manager CORE,
     Event.accept_request CORE,
+    Event.analyze CORE,
     Event.reject_request CORE,
+    Event.remove_attendee CORE,
+
+    Category.categories CORE,
+    Category.create_category CORE,
+    Category.edit_category CORE,
+    Category.update_category CORE,
+    Category.view_category CORE,
+
     Ad.get_personalize_ad CORE,
+
     main CORE,
 
     Person.recommend_events RECOMMENDEVENTS,
-    Person.profile TARGETEDMARKETING,
     Person.send_advertisement_to_user MASSMARKETING,
     Ad.get_personalize_ad TARGETEDMARKETING,
     Event.analyze ANALYTICS,
-    Event.analyze CORE,
     Category.send_mass_advertisement MASSMARKETING
 }
 
