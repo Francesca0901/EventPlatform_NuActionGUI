@@ -269,118 +269,61 @@ def categories():
 
 def view_category(id):
     category = CategoryDTO.copy(Category.query.get(id))
-    for e in category.events:
-        e.owner = PersonDTO.copy(Event.query.get(e.id).owner)
     user = PersonDTO.copy(current_user)
     restrict_user(user, user)
     restrict_category(user, category)
 
     return {'category' : category}
 
-@login_required
 def remove_category(id,c):
     event = Event.query.get(id)
     category = Category.query.get(c)
-
-    # manager can remove event's category
-    # moderator can remove event from category they moderate
-    
-    user = PersonDTO.copy(current_user)
-    if not in_list(user, event.managedBy) and not in_list(user, category.moderators):
-        raise SecurityException("You are not allowed to remove this event from the category, because you are not manager or moderator.")
-    
     if event in category.events:
         category.events.remove(event)
         db.session.commit()
-
-@login_required
-def edit_category(id):
-    if not current_user.role.name == "ADMIN":
-        raise SecurityException("You are not allowed to edit this category, because you are not an admin.")
     
+def edit_category(id):
     cat = Category.query.get(id)
     category = CategoryDTO.copy(cat)
     candidates = PersonDTO.copies(cat.candidates)
     return {'category' : category, 'candidates' : candidates}
 
-@login_required
 def add_moderator(id,c):
-    if not current_user.role.name == "ADMIN":
-        raise SecurityException("You are not allowed to add a moderator, because you are not an admin.")
-    
     user = Person.query.get(id)
     category = Category.query.get(c)
-
-    if user.role.name != "MODERATOR":
-        raise SecurityException("You can only add a user with moderator role.")
-    
     if user not in category.moderators:
         category.moderators.append(user)
         db.session.commit()
 
-@login_required
 def remove_moderator(id,c):
-    if not current_user.role.name == "ADMIN":
-        raise SecurityException("You are not allowed to remove a moderator, because you are not an admin.")
-    
     user = Person.query.get(id)
     category = Category.query.get(c)
-
-    if user.role.name != "MODERATOR":
-        raise SecurityException("You can only remove a user with moderator role.")
-    
-    if not user in category.moderators:
-        raise SecurityException("User is not a moderator of the category.")
-    
     if user in category.moderators:
         category.moderators.remove(user)
         db.session.commit()
 
-@login_required
 def update_category():
-    if not current_user.role.name == "ADMIN":
-        raise SecurityException("You are not allowed to update this category, because you are not an admin.")
-    
     category = Category.query.get(request.form["id"])
     if category.name != request.form["name"]:
         category.name = request.form["name"]
     db.session.commit()
     return request.form["id"]
 
-@login_required
 def subscribe(id):
     category = Category.query.get(id)
     if category not in current_user.subscriptions:
          current_user.subscriptions.append(category)
          db.session.commit()
     
-@login_required
 def unsubscribe(id):
     category = Category.query.get(id)
     if category in current_user.subscriptions:
          current_user.subscriptions.remove(category)
          db.session.commit()
-    else:
-        raise SecurityException("You are not subscribed to this category.")
-
-@login_required 
+    
 def send_mass_advertisement(id):
-    # TODO: make sure
-    # As only moderator can see the category subscribers' email, only they can ACTUALLY send mass advertisement
     category = Category.query.get(id)
-    user = Person.query.get(current_user.id)
-
-    category_dto = CategoryDTO.copy(category)
-    user_dto = PersonDTO.copy(user)
-
-    restrict_user(user_dto, user_dto)
-    restrict_category(user_dto, category_dto)
-
-    # can skip this, because if user is not a moderator, they can't see the subscribers
-    if not in_list(user_dto, category_dto.moderators):
-        raise SecurityException("You are not allowed to send mass advertisement, because you are not a moderator of the category.") 
-
-    for subscriber in category_dto.subscribers:
+    for subscriber in category.subscribers:
         send_advertisement_to_user(subscriber)
 
 @login_required
@@ -396,10 +339,6 @@ def create_category():
 
 def users():
     users = PersonDTO.copies(Person.query.all())
-    cur_user = PersonDTO.copy(current_user)
-    restrict_user(cur_user, cur_user)
-    for u in users:
-        restrict_user(cur_user, u)
     return {'users' : users}
 
 def user(id):
@@ -411,8 +350,6 @@ def user(id):
     roles = RoleDTO.copies(Role.query.all())
     return {'user' : user, 'roles' : roles}
 
-@login_required
-# TODO: need to finish from here
 def update_user():
     user = Person.query.get(request.form["id"])
     if user.name != request.form["name"]:
@@ -577,7 +514,7 @@ def restrict_user(user: PersonDTO, user_to_restrict: PersonDTO, recursive: bool 
         for event in user_to_restrict.requests:
             restrict_event(user, event)
         for category in user_to_restrict.subscriptions:
-            restrict_category(user, category, False)
+            restrict_category(user, category)
         for event in user_to_restrict.moderates:
             restrict_event(user, event)
 
