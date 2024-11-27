@@ -157,12 +157,13 @@ def edit_event(id):
 
     user = PersonDTO.copy(current_user)
     restrict_user(user, user)
+    restrict_event(user, event)
 
     for c in categories:
         restrict_category(user, c)
 
     # only managers can edit the event
-    if not in_list(user, event.managedBy):
+    if not in_list(event, user.manages):
         raise SecurityException("You are not allowed to edit this event, because you are not manager of it.")
     return {'event' : event, 'categories' : categories}
 
@@ -253,9 +254,11 @@ def manage_event(id):
     event = EventDTO.copy(Event.query.get(id))
     user = PersonDTO.copy(current_user)
     restrict_user(user, user)
+    restrict_event(user, event)
 
-    if not in_list(user, event.managedBy):
-        raise SecurityException("You are not allowed to manage this event, because you are not manager of it.")
+    # allow all user to view the manage_event endpoint, because user need to cancel there own request here.
+    # if not in_list(user, event.managedBy):
+    #     raise SecurityException("You are not allowed to manage this event, because you are not manager of it.")
     return {'event' : event}
 
 def categories():
@@ -320,21 +323,22 @@ def add_moderator(id,c):
 
 @login_required
 def remove_moderator(id,c):
-    if not current_user.role.name == "ADMIN":
-        raise SecurityException("You are not allowed to remove a moderator, because you are not an admin.")
-    
+    # admin can remove user with moderator role from category they moderate
+    # moderator can remove themselves from category they moderate
     user = Person.query.get(id)
     category = Category.query.get(c)
 
     if user.role.name != "MODERATOR":
         raise SecurityException("You can only remove a user with moderator role.")
     
-    if not user in category.moderators:
-        raise SecurityException("User is not a moderator of the category.")
+    if not current_user.role.name == "ADMIN" and not current_user.id == id:
+        raise SecurityException("You are not allowed to remove a moderator, because you are not an admin or the moderator herself.")
     
     if user in category.moderators:
         category.moderators.remove(user)
         db.session.commit()
+    else:
+        raise SecurityException("User is not a moderator of the category.")
 
 @login_required
 def update_category():
@@ -376,7 +380,7 @@ def send_mass_advertisement(id):
     restrict_user(user_dto, user_dto)
     restrict_category(user_dto, category_dto)
 
-    # can skip this, because if user is not a moderator, they can't see the subscribers
+    # can delete this, because if user is not a moderator, they can't see the subscribers
     if not in_list(user_dto, category_dto.moderators):
         raise SecurityException("You are not allowed to send mass advertisement, because you are not a moderator of the category.") 
 
@@ -412,54 +416,116 @@ def user(id):
     return {'user' : user, 'roles' : roles}
 
 @login_required
-# TODO: need to finish from here
 def update_user():
     user = Person.query.get(request.form["id"])
+
+    cur_user = PersonDTO.copy(current_user)
+
+    # Admin can adit any user role, user can edit their own core info except role
+    if not cur_user.role.name == "ADMIN" and not cur_user.id == user.id:
+        raise SecurityException("You are not allowed to update this user, because you are not an admin or the user itself.")
+    
     if user.name != request.form["name"]:
+        if cur_user.id != user.id:
+            raise SecurityException("You are not allowed to update this user's name.")
         user.name = request.form["name"]
     if user.surname != request.form["surname"]:
+        if cur_user.id != user.id:
+            raise SecurityException("You are not allowed to update this user's name.")
         user.surname = request.form["surname"]
     if user.role.name != request.form["role"]:
+        if cur_user.role.name != "ADMIN":
+            raise SecurityException("You are not allowed to update this user's role, because you are not an admin.")
         user.role = Role.query.filter_by(name=request.form["role"]).first()
-    if user.email != request.form["email"]:
-        user.email = request.form["email"]
-    if user.gender != request.form["gender"]:
-        user.gender = request.form["gender"]
+
+    # Nobody can edit email and gender, so skip them
+    # if user.email != request.form["email"]:
+    #     user.email = request.form["email"]
+    # if user.gender != request.form["gender"]:
+    #     user.gender = request.form["gender"]
     db.session.commit()
     return request.form["id"]
         
+@login_required
 def promote_manager(id,e):
     user = Person.query.get(id)
     event = Event.query.get(e)
+
+    if not in_list(current_user, event.managedBy):
+        raise SecurityException("You are not allowed to promote a manager, because you are not manager of the event.")
+    
+    if not in_list(user, event.attendants):
+        raise SecurityException("You are not allowed to promote a manager, because this user is not attending the event.")
+    
     if user not in event.managedBy:
         event.managedBy.append(user)
         db.session.commit()  
 
+@login_required
 def demote_manager(id,e):
     user = Person.query.get(id)
     event = Event.query.get(e)
+
+    # only owner can demote a manager, and owner can't demote themselves
+    if not in_list(event, user.manages):
+        raise SecurityException("You are not allowed to demote a manager, because you are not owner of the event.")
+    
+    if current_user.id == user.id:
+        raise SecurityException("As an owner, you are not allowed to demote yourself.")
+    
     if user in event.managedBy:
         event.managedBy.remove(user)
         db.session.commit()
 
+@login_required
 def remove_attendee(id,e):
+    # any user except the managers can remove themselves
+    # managers can remove any attendee if they are not managers
+
+    cur_user = Person.query.get(current_user.id)
     user = Person.query.get(id)
     event = Event.query.get(e)
-    if user in event.attendants:
-        event.attendants.remove(user)
-        db.session.commit()
 
+    if in_list(user, event.managedBy):
+        raise SecurityException("You are not allowed to remove a manager as attendee.")
+    
+    if user.id == cur_user.id or in_list(cur_user, event.managedBy):
+        if user in event.attendants:
+            event.attendants.remove(user)
+            db.session.commit()
+    else:
+        raise SecurityException("You are not allowed to remove another user as attendee, because you are not manager of the event.")
+
+@login_required
 def accept_request(id,e):
     user = Person.query.get(id)
     event = Event.query.get(e)
+
+    cur_user = Person.query.get(current_user.id)
+    if not in_list(cur_user, event.managedBy):
+        raise SecurityException("You are not allowed to accept a request, because you are not manager of the event.")
+
+    # Manager can add those who have requested to join an event as attendants
+    if not in_list(user, event.requesters):
+        raise SecurityException("User has not requested to join the event.")
+
     if user not in event.attendants:
         event.attendants.append(user)
     event.requesters.remove(user)
     db.session.commit()
 
+@login_required
 def reject_request(id,e):
     user = Person.query.get(id)
     event = Event.query.get(e)
+
+    cur_user = Person.query.get(current_user.id)
+    if not in_list(cur_user, event.managedBy):
+        raise SecurityException("You are not allowed to reject a request, because you are not manager of the event.")
+    
+    if not in_list(user, event.requesters):
+        raise SecurityException("User has not requested to join the event.")
+
     event.requesters.remove(user)
     db.session.commit()
 
@@ -467,12 +533,19 @@ def ads():
     ads = AdDTO.copies(Ad.query.all())
     return {'ads' : ads}    
 
+@login_required
 def remove_ad(id):
+    if not current_user.role.name == "ADMIN":
+        raise SecurityException("You are not allowed to remove an ad, because you are not an admin.")
     ad = Ad.query.get(id)
     db.session.delete(ad)
     db.session.commit()
 
+@login_required
 def create_ad():
+    # only admin can create an ad
+    if not current_user.role.name == "ADMIN":
+        raise SecurityException("You are not allowed to create an ad, because you are not an admin.")
     content = request.form["content"]
     ad = Ad(content=content)
     db.session.add(ad)
@@ -516,9 +589,13 @@ def restrict_event(user: PersonDTO, event: EventDTO, recursive: bool = True):
     full_event = EventDTO.copy(Event.query.get(event.id))
     managedBy = full_event.managedBy
     owner = full_event.owner
+    requesters = full_event.requesters
     
     if not in_list(user, managedBy) and not in_list(user, [owner]):
         event.requesters = []
+        # can still see it's own request
+        if in_list(user, requesters):
+            event.requesters = [user]
 
     if not user.is_authenticated:
         event.attendants = []
@@ -549,7 +626,7 @@ def restrict_user(user: PersonDTO, user_to_restrict: PersonDTO, recursive: bool 
         user_to_restrict.password=RESTRICTED
         user_to_restrict.email=RESTRICTED
         user_to_restrict.gender=RESTRICTED
-        user_to_restrict.roles=RESTRICTED
+        user_to_restrict.roles=[RESTRICTED] # otherwise the PersonDTO accessing role[0] will throw index error
         user_to_restrict.events=[]
         user_to_restrict.manages=[]
         user_to_restrict.attends=[]
@@ -567,17 +644,33 @@ def restrict_user(user: PersonDTO, user_to_restrict: PersonDTO, recursive: bool 
         user_to_restrict.attends=[]
         user_to_restrict.requests=[]
         user_to_restrict.subscriptions=[]
-    elif recursive:
-        for event in user_to_restrict.events:
-            restrict_event(user, event)
-        for event in user_to_restrict.manages:
-            restrict_event(user, event)
-        for event in user_to_restrict.attends:
-            restrict_event(user, event)
-        for event in user_to_restrict.requests:
-            restrict_event(user, event)
+
+    full_user_to_restrict = PersonDTO.copy(Person.query.get(user_to_restrict.id))
+    # administrators can read any user’s name, surname, role, gender
+    if user.role.name == "ADMIN":
+        user_to_restrict.name = full_user_to_restrict.name
+        user_to_restrict.surname = full_user_to_restrict.surname
+        user_to_restrict.roles = full_user_to_restrict.roles
+        user_to_restrict.gender = full_user_to_restrict.gender
+
+    # moderators can read read the email of the subscribers of the category they moderate.
+    elif user.role.name == "MODERATOR":
         for category in user_to_restrict.subscriptions:
-            restrict_category(user, category, False)
-        for event in user_to_restrict.moderates:
-            restrict_event(user, event)
+            if in_list(user, category.moderators):
+                user_to_restrict.email = full_user_to_restrict.email
+                break
+    
+    # elif recursive:
+    #     for event in user_to_restrict.events:
+    #         restrict_event(user, event)
+    #     for event in user_to_restrict.manages:
+    #         restrict_event(user, event)
+    #     for event in user_to_restrict.attends:
+    #         restrict_event(user, event)
+    #     for event in user_to_restrict.requests:
+    #         restrict_event(user, event)
+    #     for category in user_to_restrict.subscriptions:
+    #         restrict_category(user, category, False)
+    #     for event in user_to_restrict.moderates:
+    #         restrict_event(user, event)
 
