@@ -35,31 +35,54 @@ The following elements serve as an example.
 Your task is to define them according to the privacy requirements in the project description.
 """
 
+# the name, surname, role, gender, and email attributes and the subscriptions association end in the Person entity
 PRIVACY_INPUT = {
     AnyPurpose: {
-        "data": [("Person", "name"), ("Person", "manages")],
+        "data": [],
         "children": {
             MarketingPurpose: {
-                "data": [],
+                "data": [("Person", "name")],
                 "children": {
                     MassMarketingPurpose: {
-                        "data": [("Category", "name")],
-                        "children": {},
-                        "constraintDesc": "some other conditions"
+                        "data": [("Person", "email")],
+                        "children": {}
+                    },
+                    TargetedMarketingPurpose: {
+                        "data": [("Person", "gender")],
+                        "children": {}
                     }
                 }
-            }
+            },
+            FunctionalPurpose: {
+                "data": [],
+                "children": {
+                    CorePurpose: {
+                        "data": [
+                            ("Person", "name"), 
+                            ("Person", "surname"), 
+                            ("Person", "role"), 
+                            ("Person", "subscriptions"), 
+                            ("Person", "gender"), 
+                            ("Person", "email")],
+                        "children": {},
+                    },
+                    RecommendEventsPurpose: {
+                        "data": [("Person", "subscription")],
+                        "children": {},
+                        "constraintDesc": "If you are regular user"
+                    }
+                },
+                "constraintDesc": "some conditions"
+            },
+            AnalyticsPurpose: {
+                "data": [("Person", "gender")],
+                "children": {}
+            },
+            
         }
     },
-    # This is only an example; your task is to define the elements according 
-    # to the privacy requirements outlined in the project description.
-    FunctionalPurpose: {
-        "data": [],
-        "children": {},
-        "constraintDesc": "some conditions"
-    }
-    # ...
 }
+
 
 
 """
@@ -674,3 +697,7 @@ def restrict_user(user: PersonDTO, user_to_restrict: PersonDTO, recursive: bool 
     #     for event in user_to_restrict.moderates:
     #         restrict_event(user, event)
 
+def access_personal_data():
+    user = PersonDTO.copy(current_user)
+    restrict_user(user, user)
+    return {'user' : user}
