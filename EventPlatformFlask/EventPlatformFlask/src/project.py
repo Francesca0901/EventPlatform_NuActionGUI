@@ -1,6 +1,6 @@
 from flask import request
 from flask_user import current_user, login_required, roles_accepted
-from model import db, Person, Role, Event, Category, Purpose, Ad, AnyPurpose, FunctionalPurpose, MarketingPurpose, AnalyticsPurpose, CorePurpose, RecommendEventsPurpose, TargetedMarketingPurpose, MassMarketingPurpose
+from model import Consent, db, Person, Role, Event, Category, Purpose, Ad, AnyPurpose, FunctionalPurpose, MarketingPurpose, AnalyticsPurpose, CorePurpose, RecommendEventsPurpose, TargetedMarketingPurpose, MassMarketingPurpose
 from dto import PersonDTO, EventDTO, CategoryDTO, RoleDTO, AdDTO, RESTRICTED
 import hashlib
 import random
@@ -67,12 +67,11 @@ PRIVACY_INPUT = {
                         "children": {},
                     },
                     RecommendEventsPurpose: {
-                        "data": [("Person", "subscription")],
+                        "data": [("Person", "subscriptions")],
                         "children": {},
-                        "constraintDesc": "If you are regular user"
+                        "constraintDesc": "If you are a regular user"
                     }
-                },
-                "constraintDesc": "some conditions"
+                }
             },
             AnalyticsPurpose: {
                 "data": [("Person", "gender")],
@@ -83,7 +82,51 @@ PRIVACY_INPUT = {
     },
 }
 
+purpose_hierarchy = {
+    TargetedMarketingPurpose: MarketingPurpose,
+    MassMarketingPurpose: MarketingPurpose,
+    RecommendEventsPurpose: FunctionalPurpose,
+    CorePurpose: FunctionalPurpose,
+    FunctionalPurpose: AnyPurpose,
+    MarketingPurpose: AnyPurpose,
+    AnalyticsPurpose: AnyPurpose,
+}
 
+def check_consent(user : PersonDTO, class_name, property_name, actual_purposes):
+    # Ensure actual_purposes are Purpose objects
+    if isinstance(actual_purposes[0], str):
+        actual_purposes = [Purpose.query.filter_by(name=name).first() for name in actual_purposes]
+
+    # check if the actual purpose is in the consented purposes
+    for actual in actual_purposes:
+        consent = Consent.query.filter_by(
+            person_id = user.id,
+            classname = class_name,
+            propertyname = property_name,
+            purpose_id = actual.id
+        ).first()
+        if not consent:
+            # check parent purposes, in our case only one parent to check
+            parent_purpose = purpose_hierarchy.get(actual.name)
+
+            if parent_purpose:
+                parent_purpose_id = Purpose.query.filter_by(name=parent_purpose).first().id
+                consent = Consent.query.filter_by(
+                    person_id=user.id,
+                    classname=class_name,
+                    propertyname=property_name,
+                    purpose_id=parent_purpose_id
+                ).first()
+                if not consent:
+                    # setattr(user, property_name, None)  # Set property to []
+                    # raise PrivacyException(f"User {user.name} has not consented to the actual purpose {actual.name} or {parent_purpose} for {class_name}.{property_name}.")
+                    return False
+            else:
+                # setattr(user, property_name, None)  # Set property to []
+                # raise PrivacyException(f"User {user.name} has not consented to the actual purpose {actual.name} for {class_name}.{property_name}.")
+                return False
+            
+    return True
 
 """
 Throw this exception when action is not authorized 
@@ -223,9 +266,16 @@ def analyze(id):
     if user.role.name != "ADMIN":
         raise SecurityException("You are not allowed to analyze this event, because you are not an admin.")
     
+    user = PersonDTO.copy(user)
     event = Event.query.get(id)
     gender_counts = {"male": 0, "female": 0, "unknown": 0}
     for p in event.attendants:
+        p = PersonDTO.copy(p)
+        restrict_user(user, p)
+
+        # Privacy: if the user has not consented to gender
+        if not check_consent(p, "Person", "gender", [AnalyticsPurpose]):
+            p.gender = "unknown"
         gender = p.gender if p.gender in gender_counts else "unknown"
         gender_counts[gender] += 1    
     return {
@@ -408,6 +458,12 @@ def send_mass_advertisement(id):
         raise SecurityException("You are not allowed to send mass advertisement, because you are not a moderator of the category.") 
 
     for subscriber in category_dto.subscribers:
+        restrict_user(user_dto, subscriber)
+
+        # Privacy: if the subscriber has not consented to the actual purpose TargetedMarketing, the email is restricted
+        if not check_consent(subscriber, "Person", "email", [TargetedMarketingPurpose]):
+            continue
+    
         send_advertisement_to_user(subscriber)
 
 @login_required
@@ -575,12 +631,25 @@ def create_ad():
     db.session.commit()
 
 def recommend_events(user):
+    # TODO :: copy DTO cause events turn to 0
+    # user = PersonDTO.copy(user, True)
+    # restrict_user(user, user)
+
     subscriptions = user.subscriptions
+    if not check_consent(user, "Person", "subscriptions", [RecommendEventsPurpose]):
+        subscriptions = []
     attending = user.attends
     events = [event for category in subscriptions for event in category.events]
     return list(set(events) - set(attending)) 
     
 def get_personalize_ad(user):
+    user = PersonDTO.copy(user)
+    actual_purpose = [TargetedMarketingPurpose]
+    all_consent = check_consent(user, "Person", "gender", actual_purpose) and check_consent(user, "Person", "name", actual_purpose)
+
+    if not all_consent:
+        return None
+
     seed_string = f"{user.id}{user.name}{user.gender}"
     seed_value = int(hashlib.sha256(seed_string.encode()).hexdigest(), 16)
     random.seed(seed_value)
@@ -624,8 +693,15 @@ def restrict_event(user: PersonDTO, event: EventDTO, recursive: bool = True):
         event.attendants = []
         event.managedBy = []
 
+    for a in event.attendants:
+        restrict_user(user, a, False)
+    for m in event.managedBy:
+        restrict_user(user, m, False)
+    for c in event.categories:
+        restrict_category(user, c, False)
+
 def restrict_category(user: PersonDTO, category: CategoryDTO, recursive: bool = True):
-    full_category = CategoryDTO.copy(Category.query.get(category.id))
+    full_category = CategoryDTO.copy(Category.query.get(category.id), True)
     moderators = full_category.moderators
 
     if not in_list(user, moderators):
@@ -635,7 +711,7 @@ def restrict_category(user: PersonDTO, category: CategoryDTO, recursive: bool = 
 
     if recursive: # restrict access to all events under the category
         for event in category.events:
-            restrict_event(user, event)
+            restrict_event(user, event, False)
 
 # restrict data concerning another user based on the requesters permissions and whether they are same person
 def restrict_user(user: PersonDTO, user_to_restrict: PersonDTO, recursive: bool = True):
@@ -667,8 +743,19 @@ def restrict_user(user: PersonDTO, user_to_restrict: PersonDTO, recursive: bool 
         user_to_restrict.attends=[]
         user_to_restrict.requests=[]
         user_to_restrict.subscriptions=[]
+    elif recursive:
+        for e in user_to_restrict.events:
+            restrict_event(user, e, False)
+        for e in user_to_restrict.manages:
+            restrict_event(user, e, False)
+        for e in user_to_restrict.attends:
+            restrict_event(user, e, False)
+        for e in user_to_restrict.requests:
+            restrict_event(user, e, False)
+        for c in user_to_restrict.subscriptions:
+            restrict_category(user, c, False)
 
-    full_user_to_restrict = PersonDTO.copy(Person.query.get(user_to_restrict.id))
+    full_user_to_restrict = PersonDTO.copy(Person.query.get(user_to_restrict.id), True)
     # administrators can read any user’s name, surname, role, gender
     if user.role.name == "ADMIN":
         user_to_restrict.name = full_user_to_restrict.name
@@ -682,22 +769,3 @@ def restrict_user(user: PersonDTO, user_to_restrict: PersonDTO, recursive: bool 
             if in_list(user, category.moderators):
                 user_to_restrict.email = full_user_to_restrict.email
                 break
-    
-    # elif recursive:
-    #     for event in user_to_restrict.events:
-    #         restrict_event(user, event)
-    #     for event in user_to_restrict.manages:
-    #         restrict_event(user, event)
-    #     for event in user_to_restrict.attends:
-    #         restrict_event(user, event)
-    #     for event in user_to_restrict.requests:
-    #         restrict_event(user, event)
-    #     for category in user_to_restrict.subscriptions:
-    #         restrict_category(user, category, False)
-    #     for event in user_to_restrict.moderates:
-    #         restrict_event(user, event)
-
-def access_personal_data():
-    user = PersonDTO.copy(current_user)
-    restrict_user(user, user)
-    return {'user' : user}
