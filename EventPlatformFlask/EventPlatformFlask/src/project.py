@@ -185,15 +185,28 @@ def profile():
     for e in user.manages:
         e.owner = PersonDTO.copy(Event.query.get(e.id).owner)
         restrict_user(user, e.owner)
+        if check_consent(e.owner, "Person", "name", [CorePurpose]):
+            e.owner.name = RESTRICTED
     for e in user.attends:
         e.owner = PersonDTO.copy(Event.query.get(e.id).owner)
         restrict_user(user, e.owner)
+        if check_consent(e.owner, "Person", "name", [CorePurpose]):
+            e.owner.name = RESTRICTED
     subs=CategoryDTO.copies(current_user.subscriptions)
-    for s in subs:
-        for e in s.events:
+    for cate in subs:
+        for e in cate.events:
             e.owner = PersonDTO.copy(Event.query.get(e.id).owner)
             restrict_user(user, e.owner)
-        restrict_category(user, s)
+        restrict_category(user, cate)
+
+        # if the subscriber has not consent to give their subscription, remove them
+        filtered_subscribers = []
+        for subscriber in cate.subscribers:
+            if check_consent(subscriber, "Person", "subscriptions", [CorePurpose]):
+                filtered_subscribers.append(subscriber)
+
+        cate.subscribers = filtered_subscribers
+
     ad = get_personalize_ad(current_user)
     return {'user' : user, 'subs' : subs, 'ad': ad}
         
@@ -204,6 +217,8 @@ def events():
     user = PersonDTO.copy(current_user)
     for e in events:
         restrict_event(user, e)
+        if not check_consent(e.owner, "Person", "name", [CorePurpose]):
+            e.owner.name = RESTRICTED
 
     for c in categories:
         restrict_category(user, c)
@@ -215,6 +230,12 @@ def view_event(id):
     restrict_user(user, user)
     event = EventDTO.copy(Event.query.get(id))
     restrict_event(user, event)
+
+    for a in event.attendants:
+        if not check_consent(a, "Person", "name", [CorePurpose]):
+            a.name = RESTRICTED
+        if not check_consent(a, "Person", "surname", [CorePurpose]):
+            a.surname = RESTRICTED
     return {'event' : event}
 
 def edit_event(id):
@@ -329,6 +350,25 @@ def manage_event(id):
     restrict_user(user, user)
     restrict_event(user, event)
 
+    # privacy: restrict the name and surname of the attendants, managers, and requesters
+    for a in event.attendants:
+        if not check_consent(a, "Person", "name", [CorePurpose]):
+            a.name = RESTRICTED
+        if not check_consent(a, "Person", "surname", [CorePurpose]):
+            a.surname = RESTRICTED
+
+    for m in event.managedBy:
+        if not check_consent(m, "Person", "name", [CorePurpose]):
+            m.name = RESTRICTED
+        if not check_consent(m, "Person", "surname", [CorePurpose]):
+            m.surname = RESTRICTED
+
+    for r in event.requesters:
+        if not check_consent(r, "Person", "name", [CorePurpose]):
+            r.name = RESTRICTED
+        if not check_consent(r, "Person", "surname", [CorePurpose]):
+            r.surname = RESTRICTED
+
     # allow all user to view the manage_event endpoint, because user need to cancel there own request here.
     # if not in_list(user, event.managedBy):
     #     raise SecurityException("You are not allowed to manage this event, because you are not manager of it.")
@@ -347,9 +387,25 @@ def view_category(id):
     category = CategoryDTO.copy(Category.query.get(id))
     for e in category.events:
         e.owner = PersonDTO.copy(Event.query.get(e.id).owner)
+        if not check_consent(e.owner, "Person", "name", [CorePurpose]):
+            e.owner.name = RESTRICTED
+        if not check_consent(e.owner, "Person", "surname", [CorePurpose]):
+            e.owner.surname = RESTRICTED
     user = PersonDTO.copy(current_user)
     restrict_user(user, user)
     restrict_category(user, category)
+
+    filtered_subscribers = []
+    for s in category.subscribers:
+        if check_consent(s, "Person", "subscriptions", [CorePurpose]):
+            filtered_subscribers.append(s)
+        else:
+            continue
+        if not check_consent(s, "Person", "name", [CorePurpose]):
+            s.name = RESTRICTED
+        if not check_consent(s, "Person", "surname", [CorePurpose]):
+            s.surname = RESTRICTED
+    category.subscribers = filtered_subscribers
 
     return {'category' : category}
 
@@ -376,7 +432,19 @@ def edit_category(id):
     
     cat = Category.query.get(id)
     category = CategoryDTO.copy(cat)
+    for u in category.moderators:
+        if not check_consent(u, "Person", "name", [CorePurpose]):
+            u.name = RESTRICTED
+        if not check_consent(u, "Person", "surname", [CorePurpose]):
+            u.surname = RESTRICTED
+        
     candidates = PersonDTO.copies(cat.candidates)
+    for c in candidates:
+        if not check_consent(c, "Person", "name", [CorePurpose]):
+            c.name = RESTRICTED
+        if not check_consent(c, "Person", "surname", [CorePurpose]):
+            c.surname = RESTRICTED
+        
     return {'category' : category, 'candidates' : candidates}
 
 @login_required
@@ -427,6 +495,8 @@ def update_category():
 @login_required
 def subscribe(id):
     category = Category.query.get(id)
+    if not check_consent(current_user, "Person", "subscriptions", [CorePurpose]):
+        raise PrivacyException("You are not allowed to subscribe to a category, because you have not consented to the actual purpose CorePurpose for Person.subscriptions.")
     if category not in current_user.subscriptions:
          current_user.subscriptions.append(category)
          db.session.commit()
@@ -434,6 +504,8 @@ def subscribe(id):
 @login_required
 def unsubscribe(id):
     category = Category.query.get(id)
+    if not check_consent(current_user, "Person", "subscriptions", [CorePurpose]):
+        raise PrivacyException("You are not allowed to unsubscribe from a category, because you have not consented to the actual purpose CorePurpose for Person.subscriptions.")
     if category in current_user.subscriptions:
          current_user.subscriptions.remove(category)
          db.session.commit()
@@ -483,6 +555,10 @@ def users():
     restrict_user(cur_user, cur_user)
     for u in users:
         restrict_user(cur_user, u)
+        if not check_consent(u, "Person", "name", [CorePurpose]):
+            u.name = RESTRICTED
+        if not check_consent(u, "Person", "surname", [CorePurpose]):
+            u.surname = RESTRICTED
     return {'users' : users}
 
 def user(id):
@@ -490,6 +566,20 @@ def user(id):
     cur_user = PersonDTO.copy(current_user)
     restrict_user(cur_user, cur_user)
     restrict_user(cur_user, user)
+
+    # Privacy check
+    if not check_consent(user, "Person", "subscriptions", [CorePurpose]):
+        user.subscriptions = []
+    if not check_consent(user, "Person", "name", [CorePurpose]):
+        user.name = RESTRICTED
+    if not check_consent(user, "Person", "surname", [CorePurpose]):
+        user.surname = RESTRICTED
+    if not check_consent(user, "Person", "role", [CorePurpose]):
+        user.role = RESTRICTED
+    if not check_consent(user, "Person", "email", [CorePurpose]):
+        user.email = RESTRICTED
+    if not check_consent(user, "Person", "gender", [CorePurpose]):
+        user.gender = RESTRICTED
 
     roles = RoleDTO.copies(Role.query.all())
     return {'user' : user, 'roles' : roles}
@@ -517,11 +607,13 @@ def update_user():
             raise SecurityException("You are not allowed to update this user's role, because you are not an admin.")
         user.role = Role.query.filter_by(name=request.form["role"]).first()
 
-    # Nobody can edit email and gender, so skip them
-    # if user.email != request.form["email"]:
-    #     user.email = request.form["email"]
-    # if user.gender != request.form["gender"]:
-    #     user.gender = request.form["gender"]
+    # Nobody can edit email and gender TODO: double check
+    if user.email != request.form["email"]:
+        # user.email = request.form["email"]
+        raise SecurityException("You are not allowed to update this user's email.")
+    if user.gender != request.form["gender"]:
+        # user.gender = request.form["gender"]
+        raise SecurityException("You are not allowed to update this user's gender.")
     db.session.commit()
     return request.form["id"]
         
@@ -645,9 +737,9 @@ def recommend_events(user):
 def get_personalize_ad(user):
     user = PersonDTO.copy(user)
     actual_purpose = [TargetedMarketingPurpose]
-    all_consent = check_consent(user, "Person", "gender", actual_purpose) and check_consent(user, "Person", "name", actual_purpose)
+    all_consented = check_consent(user, "Person", "gender", actual_purpose) and check_consent(user, "Person", "name", actual_purpose)
 
-    if not all_consent:
+    if not all_consented:
         return None
 
     seed_string = f"{user.id}{user.name}{user.gender}"
@@ -765,7 +857,8 @@ def restrict_user(user: PersonDTO, user_to_restrict: PersonDTO, recursive: bool 
 
     # moderators can read read the email of the subscribers of the category they moderate.
     elif user.role.name == "MODERATOR":
-        for category in user_to_restrict.subscriptions:
+        for category in full_user_to_restrict.subscriptions:
             if in_list(user, category.moderators):
                 user_to_restrict.email = full_user_to_restrict.email
                 break
+        user_to_restrict.subscriptions = [category for category in full_user_to_restrict.subscriptions if in_list(user, category.moderators)]
