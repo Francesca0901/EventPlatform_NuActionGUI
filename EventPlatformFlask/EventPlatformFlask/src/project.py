@@ -1,6 +1,6 @@
 from flask import request
 from flask_user import current_user, login_required, roles_accepted
-from model import Consent, db, Person, Role, Event, Category, Purpose, Ad, AnyPurpose, FunctionalPurpose, MarketingPurpose, AnalyticsPurpose, CorePurpose, RecommendEventsPurpose, TargetedMarketingPurpose, MassMarketingPurpose
+from model import REGULARUSER, Consent, db, Person, Role, Event, Category, Purpose, Ad, AnyPurpose, FunctionalPurpose, MarketingPurpose, AnalyticsPurpose, CorePurpose, RecommendEventsPurpose, TargetedMarketingPurpose, MassMarketingPurpose
 from dto import PersonDTO, EventDTO, CategoryDTO, RoleDTO, AdDTO, RESTRICTED
 import hashlib
 import random
@@ -425,14 +425,17 @@ def remove_category(id,c):
         category.events.remove(event)
         db.session.commit()
 
-@login_required
 def edit_category(id):
-    if not current_user.role.name == "ADMIN":
-        raise SecurityException("You are not allowed to edit this category, because you are not an admin.")
+    # if not current_user.role.name == "ADMIN":
+    #     raise SecurityException("You are not allowed to edit this category, because you are not an admin.")
     
+    user = PersonDTO.copy(current_user)
     cat = Category.query.get(id)
     category = CategoryDTO.copy(cat)
+    restrict_category(user, category)
+
     for u in category.moderators:
+        restrict_user(user, u)
         if not check_consent(u, "Person", "name", [CorePurpose]):
             u.name = RESTRICTED
         if not check_consent(u, "Person", "surname", [CorePurpose]):
@@ -440,6 +443,7 @@ def edit_category(id):
         
     candidates = PersonDTO.copies(cat.candidates)
     for c in candidates:
+        restrict_user(user, c)
         if not check_consent(c, "Person", "name", [CorePurpose]):
             c.name = RESTRICTED
         if not check_consent(c, "Person", "surname", [CorePurpose]):
@@ -728,7 +732,7 @@ def recommend_events(user):
     # restrict_user(user, user)
 
     subscriptions = user.subscriptions
-    if not check_consent(user, "Person", "subscriptions", [RecommendEventsPurpose]):
+    if not (check_consent(user, "Person", "subscriptions", [RecommendEventsPurpose]) and user.role.name == REGULARUSER):
         subscriptions = []
     attending = user.attends
     events = [event for category in subscriptions for event in category.events]
