@@ -16,7 +16,7 @@
                             <input type="checkbox" onchange="handleToggle(this, {{ sub_purpose.id }}, '{{ r }}', '{{ aa }}')" {% if c %}checked{% endif %}>
                             <span class="slider"></span>
                         </label>
-                        <span>We collect {{ aa }} of {{ r }} for the sub-purpose of {{ sub_purpose.name }}{% if d != 'true' %} if {{ d }}{% endif %}.</span>
+                        <span>We use {{ aa }} of {{ r }} for the sub-purpose of {{ sub_purpose.name }}{% if d != 'true' %} if {{ d }}{% endif %}.</span>
                     </div>
                     {% endfor %}
 
@@ -56,7 +56,7 @@
                                 <input type="checkbox" onchange="handleToggle(this, {{ p.id }}, '{{ r }}', '{{ aa }}')" {% if c %}checked{% endif %}>
                                 <span class="slider"></span>
                             </label>
-                            <span>We collect {{ aa }} of {{ r }} for the purpose of {{ p.name }}{% if d != 'true' %} if {{ d }}{% endif %}.</span>
+                            <span>We use {{ aa }} of {{ r }} for the purpose of {{ p.name }}{% if d != 'true' %} if {{ d }}{% endif %}.</span>
                         </div>
                         {% endfor %}
 

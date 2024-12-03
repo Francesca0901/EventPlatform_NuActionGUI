@@ -127,12 +127,12 @@ class SecuredAttribute():
                         self._attr.__set__(instance,value)
                     else:
                         resource = resource.__class__.__name__
-                        raise PrivacyException(msg = f"It is not allowed to use '{attr}' attribute of the '{resource}' class for '{purpose}' purposes")
+                        raise PrivacyException(msg = f"It is not allowed to use attribute of the '{resource}' class for '{purpose}' purposes")
 
                 else:
                     caller = "User '" + caller.username + "'" if caller is not None else "{{- sm.anonymousRole}} user"
                     resource = resource.__class__.__name__
-                    raise SecurityException(msg = f"{caller} with '{role.name}' role is not allowed to update '{attr}' attribute of the '{resource}' class")
+                    raise SecurityException(msg = f"{caller} with '{role.name}' role is not allowed to update attribute of the '{resource}' class")
             else:
                 self._attr.__set__(instance,value) # SYSTEM actions - do not check
         else:
@@ -268,11 +268,11 @@ class SecuredList(list):
                     self._list.append(value)
                 else:
                     resource = resource.__class__.__name__
-                    raise PrivacyException(msg = f"It is not allowed to use '{attr}' attribute of the '{resource}' class for '{purpose}' purposes")
+                    raise PrivacyException(msg = f"It is not allowed to use attribute of the '{resource}' class for '{purpose}' purposes")
             else:
                 caller = "User '" + caller.username + "'" if caller is not None else "{{- sm.anonymousRole}} user"
                 resource = resource.__class__.__name__
-                raise SecurityException(msg = f"{caller} with '{role.name}' role is not allowed to add value to the '{attr}' attribute of the '{resource}' class")
+                raise SecurityException(msg = f"{caller} with '{role.name}' role is not allowed to add value to the attribute of the '{resource}' class")
         else:
             self._list.append(value) # SYSTEM actions - do not check
 
@@ -288,11 +288,11 @@ class SecuredList(list):
                     self._list.remove(value)
                 else:
                     resource = resource.__class__.__name__
-                    raise PrivacyException(msg = f"It is not allowed to use '{attr}' attribute of the '{resource}' class for '{purpose}' purposes")
+                    raise PrivacyException(msg = f"It is not allowed to use attribute of the '{resource}' class for '{purpose}' purposes")
             else:
                 caller = "User '" + caller.username + "'" if caller is not None else "{{- sm.anonymousRole}} user"
                 resource = resource.__class__.__name__
-                raise SecurityException(msg = f"{caller} with '{role.name}' role is not allowed to remove value from '{attr}' attribute of the '{resource}' class")
+                raise SecurityException(msg = f"{caller} with '{role.name}' role is not allowed to remove value from attribute of the '{resource}' class")
         else:
             self._list.remove(value) # SYSTEM actions - do not check
 

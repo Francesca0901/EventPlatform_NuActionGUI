@@ -61,7 +61,7 @@
                         {% endfor %}
 
                         {% if hierarchymodel.get(p.name) %}
-                            {{ render_sub_purposes(p.name, hierarchymodel[p.name], a, r, hierarchymodel, d, c) }}
+                            {{ render_sub_purposes(p.name, hierarchymodel[p.name], hierarchymodel) }}
                         {% endif %}
                         {% endfor %}
                     </div>

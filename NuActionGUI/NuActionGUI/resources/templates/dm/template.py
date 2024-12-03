@@ -57,6 +57,52 @@ with app.app_context():
     @Secure({{projectname}}SecurityModel,{{projectname}}PrivacyModel)
     class {{c.class}}(db.Model,UserMixin,OCLTerm):
 
+        #Association-end type classes
+        {% for ac in dm if ac.isAssociation %}
+        {%- if ac.ends[0].target == c.class -%}
+        class {{ac.ends[1].name}}List(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = {{ac.class | lower}}({{ac.ends[0].name}}=self._this,{{ac.ends[1].name}}=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = {{ac.class | lower}}.query.filter_by({{ac.ends[0].name}}=self._this,{{ac.ends[1].name}}=e).first()
+                db.session.delete(v)
+        {% endif -%} 
+        {% if ac.ends[1].target == c.class -%} 
+        class {{ac.ends[0].name}}List(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = {{ac.class | lower}}({{ac.ends[1].name}}=self._this,{{ac.ends[0].name}}=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = {{ac.class | lower}}.query.filter_by({{ac.ends[1].name}}=self._this,{{ac.ends[0].name}}=e).first()
+                db.session.delete(v)
+        {% endif -%}     
+        {% endfor %}
+
         #Attributes
         id = db.Column(db.Integer, primary_key=True)
         active = db.Column('is_active', db.Boolean(), nullable=False, server_default='1')
@@ -105,7 +151,7 @@ with app.app_context():
         {% else %}
         @property
         def {{ac.ends[1].name}}(self):    
-            return {{ac.ends[1].name}}List(self, [x.{{ac.ends[1].name}} for x in self.{{ac.class | lower}}]) 
+            return {{c.class}}.{{ac.ends[1].name}}List(self, [x.{{ac.ends[1].name}} for x in self.{{ac.class | lower}}]) 
         {% endif %}
         {% endif -%}  
         {%- if ac.ends[1].target == c.class -%}
@@ -125,7 +171,7 @@ with app.app_context():
         {% else %}
         @property
         def {{ac.ends[0].name}}(self):    
-            return {{ac.ends[0].name}}List(self, [x.{{ac.ends[0].name}} for x in self.{{ac.class | lower}}]) 
+            return {{c.class}}.{{ac.ends[0].name}}List(self, [x.{{ac.ends[0].name}} for x in self.{{ac.class | lower}}]) 
         {% endif %}
         {% endif -%}    
         {% endif -%}  
@@ -179,56 +225,57 @@ with app.app_context():
         id = db.Column(db.Integer(), primary_key=True)
         user_id = db.Column(db.Integer(), db.ForeignKey('{{- c.class | lower}}.id'), unique=True)
         role_id = db.Column(db.Integer(), db.ForeignKey('role.id'))
-        
-    {% for ac in dm if ac.isAssociation -%}
-    {%- if ac.ends[0].target == c.class -%}
-    class {{ac.ends[1].name}}List(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = {{ac.class | lower}}({{ac.ends[0].name}}=self._this,{{ac.ends[1].name}}=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = {{ac.class | lower}}.query.filter_by({{ac.ends[0].name}}=self._this,{{ac.ends[1].name}}=e).first()
-            db.session.delete(v)
-    {% endif -%} 
-    {% if ac.ends[1].target == c.class -%} 
-    class {{ac.ends[0].name}}List(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = {{ac.class | lower}}({{ac.ends[1].name}}=self._this,{{ac.ends[0].name}}=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = {{ac.class | lower}}.query.filter_by({{ac.ends[1].name}}=self._this,{{ac.ends[0].name}}=e).first()
-            db.session.delete(v)
-    {% endif -%}     
-    {% endfor %}
     
     {% else %}
     {%- if not c.isAssociation and not c.isEnum %}
     @Secure({{projectname}}SecurityModel,{{projectname}}PrivacyModel)
     class {{c.class}}(db.Model,OCLTerm):
+        
+        # Association-end type classes
+        {% for ac in dm if ac.isAssociation -%}
+        {%- if ac.ends[0].target == c.class -%}
+        class {{ac.ends[1].name}}List(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = {{ac.class | lower}}({{ac.ends[0].name}}=self._this,{{ac.ends[1].name}}=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = {{ac.class | lower}}.query.filter_by({{ac.ends[0].name}}=self._this,{{ac.ends[1].name}}=e).first()
+                db.session.delete(v)
+        {% endif -%} 
+        {% if ac.ends[1].target == c.class -%} 
+        class {{ac.ends[0].name}}List(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = {{ac.class | lower}}({{ac.ends[1].name}}=self._this,{{ac.ends[0].name}}=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = {{ac.class | lower}}.query.filter_by({{ac.ends[1].name}}=self._this,{{ac.ends[0].name}}=e).first()
+                db.session.delete(v)
+        {% endif -%}     
+        {% endfor %}
 
         # Attributes
         id = db.Column(db.Integer, primary_key=True)
@@ -271,7 +318,7 @@ with app.app_context():
                 v = {{ac.class | lower}}({{ac.ends[0].name}}=self,{{ac.ends[1].name}}=value)
                 db.session.add(v)
             {% else %}
-            return {{ac.ends[1].name}}List(self, [x.{{ac.ends[1].name}} for x in self.{{ac.class | lower}}]) 
+            return {{c.class}}.{{ac.ends[1].name}}List(self, [x.{{ac.ends[1].name}} for x in self.{{ac.class | lower}}]) 
             {% endif %}
         {% endif -%}  
         {%- if ac.ends[1].target == c.class -%}
@@ -289,7 +336,7 @@ with app.app_context():
                 v = {{ac.class | lower}}({{ac.ends[1].name}}=self,{{ac.ends[0].name}}=value)
                 db.session.add(v)
             {% else %}
-            return {{ac.ends[0].name}}List(self, [x.{{ac.ends[0].name}} for x in self.{{ac.class | lower}}]) 
+            return {{c.class}}.{{ac.ends[0].name}}List(self, [x.{{ac.ends[0].name}} for x in self.{{ac.class | lower}}]) 
             {% endif %}
         {% endif -%}    
         {% endif -%}    
@@ -305,51 +352,6 @@ with app.app_context():
     
         def __delete__(self, db):
             db.session.delete(self)  
-    
-    {% for ac in dm if ac.isAssociation -%}
-    {%- if ac.ends[0].target == c.class -%}
-    class {{ac.ends[1].name}}List(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = {{ac.class | lower}}({{ac.ends[0].name}}=self._this,{{ac.ends[1].name}}=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = {{ac.class | lower}}.query.filter_by({{ac.ends[0].name}}=self._this,{{ac.ends[1].name}}=e).first()
-            db.session.delete(v)
-    {% endif -%} 
-    {%- if ac.ends[1].target == c.class -%} 
-    class {{ac.ends[0].name}}List(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = {{ac.class | lower}}({{ac.ends[1].name}}=self._this,{{ac.ends[0].name}}=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = {{ac.class | lower}}.query.filter_by({{ac.ends[1].name}}=self._this,{{ac.ends[0].name}}=e).first()
-            db.session.delete(v)
-    {% endif -%}     
-    {% endfor %}
     
     {% endif %}
     {% endif %}

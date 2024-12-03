@@ -2,7 +2,7 @@
 
 from flask import render_template, redirect, url_for
 from flask_user import current_user
-from dtm import db, Event, Category, Person, Role, Ad
+from dtm import db, Event, Category, Person, Role, Ad, Invite
 from auxiliary import recommend_events, get_personalize_ad, send_advertisement_to_user, get_candidates
 
 def main(request):
@@ -17,7 +17,6 @@ def user(request):
 def profile(request):
     return render_template('profile.html', user=current_user, ad=get_personalize_ad({'user': current_user}))
 
-### need modify
 def update_user(request):
     user = Person.query.get(request.form["id"])
     if user.name != request.form["name"]:
@@ -137,7 +136,18 @@ def update_event(request):
 
 
 def manage_event(request):
-    return render_template('manage_event.html', event=Event.query.get(request.args["id"]))
+    event = Event.query.get(request.args["id"])
+    all_users = Person.query.all()
+    invitees = list([i.invitee.id for i in event.invitations])
+    attendants = list([a.id for a in event.attendants])
+    requesters = list([r.id for r in event.requesters])
+    users = []
+    for u in all_users:
+        if u.id not in invitees and u.id not in attendants and u.id not in requesters:
+            users.append(u)
+    return render_template('manage_event.html', 
+        event=event,
+        users=users)
 
 
 def remove_category(request):
@@ -252,3 +262,34 @@ def analyze(request):
         gender = p.gender if p.gender in gender_counts else "unknown"
         gender_counts[gender] += 1    
     return render_template('analyze.html', event=event, male=gender_counts['male'], female=gender_counts['female'], unknown=gender_counts['unknown'])
+
+def personalized_stats(request):
+    return render_template('personalized_stats.html', user=current_user)
+
+def send_invite(request):
+    user = Person.query.get(request.args["id"])
+    event = Event.query.get(request.args["e"])
+    invite = Invite()
+    invite.event = event
+    invite.invitedBy = current_user
+    invite.invitee = user
+    db.session.commit()
+    return redirect(url_for('manage_event', id=request.args["e"]))
+
+
+def accept_invitation(request):
+    invite = Invite.query.get(request.args["id"])
+    event = invite.event
+    user = invite.invitee
+    event.attendants.append(user)
+    invite.__delete__(db)
+    db.session.commit()
+    return redirect(url_for('profile'))
+
+
+def decline_invitation(request):
+    invite = Invite.query.get(request.args["id"])
+    invite.__delete__(db)
+    db.session.commit()
+    return redirect(url_for('profile'))
+

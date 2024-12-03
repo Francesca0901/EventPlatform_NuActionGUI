@@ -16,6 +16,13 @@ class {{projectname}}PrivacyModel(PrivacyModel):
         {% endfor %}
         {% endif %}
 
+        def get_subpurposes_names(self):
+            ret = []
+            for sp in purpose_hierarchy[self]:
+                ret.append(sp.name)
+                ret.extend(sp.get_subpurposes_names())
+            return ret
+
     personaldata = [
         {% for p in pm.personalData -%}
         {{ p }}{% if not loop.last %},{% endif %}
@@ -31,5 +38,15 @@ class {{projectname}}PrivacyModel(PrivacyModel):
                         replace('\'Constraint.fullAccess\'','Constraint.fullAccess') | 
                         replace('\'Constraint.noAccess\'','Constraint.noAccess') | 
                         r | rrr }}
+
+purpose_hierarchy = {
+    {%- for p in pm.purposes %}
+    {{projectname}}PrivacyModel.Purpose.{{ p.name }}: [
+        {%- for sp in p.includes %}
+        {{projectname}}PrivacyModel.Purpose.{{ sp }}{% if not loop.last %}, {% endif %}
+        {%- endfor %}
+    ]{% if not loop.last %}, {% endif %}
+    {%- endfor %}
+}
 
 {{projectname}}PrivacyModel.validate()

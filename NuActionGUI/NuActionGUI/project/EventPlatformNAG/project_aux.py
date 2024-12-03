@@ -3,15 +3,15 @@
 
 import hashlib
 import random
-from dtm import Role, Person, Ad
+from dtm import Role, Person, Ad, Event
 import sys
 
 def recommend_events(args):
     user = args['user']
-    subscriptions = user.subscriptions
-    attending = user.attends
-    events = [event for category in subscriptions for event in category.events]
-    return list(set(events) - set(attending)) 
+    events_attending = [event.id for event in user.attends]
+    events_in_subscribed_categories = [event.id for category in user.subscriptions for event in category.events]
+    events_recommended = list(set(events_in_subscribed_categories) - set(events_attending)) 
+    return [Event.query.get(id) for id in events_recommended]
 
 def get_personalize_ad(args):
     user = args['user']

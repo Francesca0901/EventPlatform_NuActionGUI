@@ -55,22 +55,30 @@ class PrivacyModel:
     @classmethod
     def check2(cls, ap, data, attr, caller, self):
         model = list(filter(lambda dp: PrivacyModel.resource_check(dp[1], data, attr) and eval_ocl(dp[2],self=self), cls.model))
-        dps = list(map(lambda dp: dp[0].name,model))
+        dps = list(map(lambda dp: dp[0],model))
         consents = [c for c in self.owner.consents if c.data.resource == data and c.data.subresource == attr]
         return cls.check(ap,dps,consents)
 
     @classmethod
     def check3(cls, ap, data, attr, caller, self, value):
         model = list(filter(lambda dp: PrivacyModel.resource_check(dp[1], data, attr) and eval_ocl(dp[2],self=self), cls.model))
-        dps = list(map(lambda dp: dp[0].name,model))
+        dps = list(map(lambda dp: dp[0],model))
         consents = [c for c in self.owner.consents if c.data.resource == data and c.data.subresource == attr]
         return cls.check(ap,dps,consents)
     
     @classmethod
     def check(cls,ap,dps,consents):
-        check_dp = set(ap).issubset(set(dps))
-        cps = [p.name for c in consents for p in c.purposes]
-        check_cn = set(ap).issubset(set(cps))
+        dpss = []
+        for p in dps:
+            dpss.append(p.name)
+            dpss.extend(p.get_subpurposes_names())
+        check_dp = set(ap).issubset(set(dpss))
+        cps = [p for c in consents for p in c.purposes]
+        cpss = []
+        for p in cps:
+            cpss.append(p.name)
+            cpss.extend(p.get_subpurposes_names())
+        check_cn = set(ap).issubset(set(cpss))
         return check_dp and check_cn
         
     # Extensible model (default: nothing declared)

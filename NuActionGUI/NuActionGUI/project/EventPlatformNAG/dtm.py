@@ -21,14 +21,6 @@ ADMIN = "ADMIN"
 # NONE and SYSTEM roles are not needed explicitly
 
 # PURPOSES
-TARGETEDMARKETING = "TARGETEDMARKETING"
-MASSMARKETING = "MASSMARKETING"
-RECOMMENDEVENTS = "RECOMMENDEVENTS"
-CORE = "CORE"
-ANALYTICS = "ANALYTICS"
-MARKETING = "MARKETING"
-FUNCTIONAL = "FUNCTIONAL"
-ANY = "ANY"
 
 
 
@@ -94,6 +86,24 @@ with app.app_context():
         requesters = db.relationship('Person', back_populates='association_requesters_requests', uselist=False)
     
     
+    class association_invitations_invitee(db.Model):
+            
+        id = db.Column(db.Integer, primary_key=True)
+        invitations_id = db.Column(db.Integer(), db.ForeignKey('invite.id'), unique=True)
+        invitee_id = db.Column(db.Integer(), db.ForeignKey('person.id'))
+        invitations = db.relationship('Invite', back_populates='association_invitations_invitee', uselist=False)
+        invitee = db.relationship('Person', back_populates='association_invitations_invitee', uselist=False)
+    
+    
+    class association_invitedby_invites(db.Model):
+            
+        id = db.Column(db.Integer, primary_key=True)
+        invites_id = db.Column(db.Integer(), db.ForeignKey('invite.id'), unique=True)
+        invitedBy_id = db.Column(db.Integer(), db.ForeignKey('person.id'))
+        invites = db.relationship('Invite', back_populates='association_invitedby_invites', uselist=False)
+        invitedBy = db.relationship('Person', back_populates='association_invitedby_invites', uselist=False)
+    
+    
     class association_categories_events(db.Model):
             
         id = db.Column(db.Integer, primary_key=True)
@@ -103,12 +113,176 @@ with app.app_context():
         events = db.relationship('Event', back_populates='association_categories_events', uselist=False)
     
     
+    class association_event_invitations(db.Model):
+            
+        id = db.Column(db.Integer, primary_key=True)
+        invitations_id = db.Column(db.Integer(), db.ForeignKey('invite.id'), unique=True)
+        event_id = db.Column(db.Integer(), db.ForeignKey('event.id'))
+        invitations = db.relationship('Invite', back_populates='association_event_invitations', uselist=False)
+        event = db.relationship('Event', back_populates='association_event_invitations', uselist=False)
+    
+    
 
     # ENTITIES
     
     # User class
     @Secure(EventPlatformNAGSecurityModel,EventPlatformNAGPrivacyModel)
     class Person(db.Model,UserMixin,OCLTerm):
+
+        #Association-end type classes
+        class eventsList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_events_owner(owner=self._this,events=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_events_owner.query.filter_by(owner=self._this,events=e).first()
+                db.session.delete(v)
+        class managesList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_managedby_manages(managedBy=self._this,manages=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_managedby_manages.query.filter_by(managedBy=self._this,manages=e).first()
+                db.session.delete(v)
+        class attendsList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_attendants_attends(attendants=self._this,attends=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_attendants_attends.query.filter_by(attendants=self._this,attends=e).first()
+                db.session.delete(v)
+        class subscriptionsList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_subscribers_subscriptions(subscribers=self._this,subscriptions=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_subscribers_subscriptions.query.filter_by(subscribers=self._this,subscriptions=e).first()
+                db.session.delete(v)
+        class moderatesList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_moderates_moderators(moderators=self._this,moderates=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_moderates_moderators.query.filter_by(moderators=self._this,moderates=e).first()
+                db.session.delete(v)
+        class requestsList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_requesters_requests(requesters=self._this,requests=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_requesters_requests.query.filter_by(requesters=self._this,requests=e).first()
+                db.session.delete(v)
+        class invitationsList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_invitations_invitee(invitee=self._this,invitations=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_invitations_invitee.query.filter_by(invitee=self._this,invitations=e).first()
+                db.session.delete(v)
+        class invitesList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_invitedby_invites(invitedBy=self._this,invites=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_invitedby_invites.query.filter_by(invitedBy=self._this,invites=e).first()
+                db.session.delete(v)
+        
 
         #Attributes
         id = db.Column(db.Integer, primary_key=True)
@@ -126,41 +300,50 @@ with app.app_context():
         
         @property
         def events(self):    
-            return eventsList(self, [x.events for x in self.association_events_owner]) 
+            return Person.eventsList(self, [x.events for x in self.association_events_owner]) 
         
         association_managedby_manages = db.relationship('association_managedby_manages', cascade="all, delete-orphan", back_populates='managedBy')
         
         @property
         def manages(self):    
-            return managesList(self, [x.manages for x in self.association_managedby_manages]) 
+            return Person.managesList(self, [x.manages for x in self.association_managedby_manages]) 
         
         association_attendants_attends = db.relationship('association_attendants_attends', cascade="all, delete-orphan", back_populates='attendants')
         
         @property
         def attends(self):    
-            return attendsList(self, [x.attends for x in self.association_attendants_attends]) 
+            return Person.attendsList(self, [x.attends for x in self.association_attendants_attends]) 
         
         association_subscribers_subscriptions = db.relationship('association_subscribers_subscriptions', cascade="all, delete-orphan", back_populates='subscribers')
         
         @property
         def subscriptions(self):    
-            return subscriptionsList(self, [x.subscriptions for x in self.association_subscribers_subscriptions]) 
+            return Person.subscriptionsList(self, [x.subscriptions for x in self.association_subscribers_subscriptions]) 
         
         association_moderates_moderators = db.relationship('association_moderates_moderators', cascade="all, delete-orphan", back_populates='moderators')
         
         @property
         def moderates(self):    
-            return moderatesList(self, [x.moderates for x in self.association_moderates_moderators]) 
+            return Person.moderatesList(self, [x.moderates for x in self.association_moderates_moderators]) 
         
         association_requesters_requests = db.relationship('association_requesters_requests', cascade="all, delete-orphan", back_populates='requesters')
         
         @property
         def requests(self):    
-            return requestsList(self, [x.requests for x in self.association_requesters_requests]) 
+            return Person.requestsList(self, [x.requests for x in self.association_requesters_requests]) 
+        
+        association_invitations_invitee = db.relationship('association_invitations_invitee', cascade="all, delete-orphan", back_populates='invitee')
         
         @property
-        def owner(self):
-            return self
+        def invitations(self):    
+            return Person.invitationsList(self, [x.invitations for x in self.association_invitations_invitee]) 
+        
+        association_invitedby_invites = db.relationship('association_invitedby_invites', cascade="all, delete-orphan", back_populates='invitedBy')
+        
+        @property
+        def invites(self):    
+            return Person.invitesList(self, [x.invites for x in self.association_invitedby_invites]) 
+        
         @property
         def role(self):
             return self.roles[0]
@@ -218,127 +401,128 @@ with app.app_context():
         id = db.Column(db.Integer(), primary_key=True)
         user_id = db.Column(db.Integer(), db.ForeignKey('person.id'), unique=True)
         role_id = db.Column(db.Integer(), db.ForeignKey('role.id'))
-        
-    class eventsList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_events_owner(owner=self._this,events=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_events_owner.query.filter_by(owner=self._this,events=e).first()
-            db.session.delete(v)
-    class managesList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_managedby_manages(managedBy=self._this,manages=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_managedby_manages.query.filter_by(managedBy=self._this,manages=e).first()
-            db.session.delete(v)
-    class attendsList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_attendants_attends(attendants=self._this,attends=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_attendants_attends.query.filter_by(attendants=self._this,attends=e).first()
-            db.session.delete(v)
-    class subscriptionsList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_subscribers_subscriptions(subscribers=self._this,subscriptions=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_subscribers_subscriptions.query.filter_by(subscribers=self._this,subscriptions=e).first()
-            db.session.delete(v)
-    class moderatesList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_moderates_moderators(moderators=self._this,moderates=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_moderates_moderators.query.filter_by(moderators=self._this,moderates=e).first()
-            db.session.delete(v)
-    class requestsList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_requesters_requests(requesters=self._this,requests=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_requesters_requests.query.filter_by(requesters=self._this,requests=e).first()
-            db.session.delete(v)
-    
     
     
     
     @Secure(EventPlatformNAGSecurityModel,EventPlatformNAGPrivacyModel)
     class Event(db.Model,OCLTerm):
+        
+        # Association-end type classes
+        class ownerList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_events_owner(events=self._this,owner=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_events_owner.query.filter_by(events=self._this,owner=e).first()
+                db.session.delete(v)
+        class managedByList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_managedby_manages(manages=self._this,managedBy=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_managedby_manages.query.filter_by(manages=self._this,managedBy=e).first()
+                db.session.delete(v)
+        class attendantsList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_attendants_attends(attends=self._this,attendants=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_attendants_attends.query.filter_by(attends=self._this,attendants=e).first()
+                db.session.delete(v)
+        class requestersList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_requesters_requests(requests=self._this,requesters=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_requesters_requests.query.filter_by(requests=self._this,requesters=e).first()
+                db.session.delete(v)
+        class categoriesList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_categories_events(events=self._this,categories=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_categories_events.query.filter_by(events=self._this,categories=e).first()
+                db.session.delete(v)
+        class invitationsList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_event_invitations(event=self._this,invitations=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_event_invitations.query.filter_by(event=self._this,invitations=e).first()
+                db.session.delete(v)
+        
 
         # Attributes
         id = db.Column(db.Integer, primary_key=True)
@@ -363,133 +547,102 @@ with app.app_context():
         @property
         def managedBy(self):
             
-            return managedByList(self, [x.managedBy for x in self.association_managedby_manages]) 
+            return Event.managedByList(self, [x.managedBy for x in self.association_managedby_manages]) 
             
         association_attendants_attends = db.relationship('association_attendants_attends', cascade="all, delete-orphan", back_populates='attends')
         @property
         def attendants(self):
             
-            return attendantsList(self, [x.attendants for x in self.association_attendants_attends]) 
+            return Event.attendantsList(self, [x.attendants for x in self.association_attendants_attends]) 
             
         association_requesters_requests = db.relationship('association_requesters_requests', cascade="all, delete-orphan", back_populates='requests')
         @property
         def requesters(self):
             
-            return requestersList(self, [x.requesters for x in self.association_requesters_requests]) 
+            return Event.requestersList(self, [x.requesters for x in self.association_requesters_requests]) 
             
         association_categories_events = db.relationship('association_categories_events', cascade="all, delete-orphan", back_populates='events')
         @property
         def categories(self):
             
-            return categoriesList(self, [x.categories for x in self.association_categories_events]) 
+            return Event.categoriesList(self, [x.categories for x in self.association_categories_events]) 
+            
+        association_event_invitations = db.relationship('association_event_invitations', cascade="all, delete-orphan", back_populates='event')
+        @property
+        def invitations(self):
+            
+            return Event.invitationsList(self, [x.invitations for x in self.association_event_invitations]) 
             
         
     
         def __delete__(self, db):
             db.session.delete(self)  
     
-    class ownerList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_events_owner(events=self._this,owner=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_events_owner.query.filter_by(events=self._this,owner=e).first()
-            db.session.delete(v)
-    class managedByList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_managedby_manages(manages=self._this,managedBy=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_managedby_manages.query.filter_by(manages=self._this,managedBy=e).first()
-            db.session.delete(v)
-    class attendantsList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_attendants_attends(attends=self._this,attendants=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_attendants_attends.query.filter_by(attends=self._this,attendants=e).first()
-            db.session.delete(v)
-    class requestersList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_requesters_requests(requests=self._this,requesters=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_requesters_requests.query.filter_by(requests=self._this,requesters=e).first()
-            db.session.delete(v)
-    class categoriesList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_categories_events(events=self._this,categories=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_categories_events.query.filter_by(events=self._this,categories=e).first()
-            db.session.delete(v)
-    
-    
     
     
     
     @Secure(EventPlatformNAGSecurityModel,EventPlatformNAGPrivacyModel)
     class Category(db.Model,OCLTerm):
+        
+        # Association-end type classes
+        class subscribersList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_subscribers_subscriptions(subscriptions=self._this,subscribers=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_subscribers_subscriptions.query.filter_by(subscriptions=self._this,subscribers=e).first()
+                db.session.delete(v)
+        class moderatorsList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_moderates_moderators(moderates=self._this,moderators=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_moderates_moderators.query.filter_by(moderates=self._this,moderators=e).first()
+                db.session.delete(v)
+        class eventsList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_categories_events(categories=self._this,events=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_categories_events.query.filter_by(categories=self._this,events=e).first()
+                db.session.delete(v)
+        
 
         # Attributes
         id = db.Column(db.Integer, primary_key=True)
@@ -500,89 +653,33 @@ with app.app_context():
         @property
         def subscribers(self):
             
-            return subscribersList(self, [x.subscribers for x in self.association_subscribers_subscriptions]) 
+            return Category.subscribersList(self, [x.subscribers for x in self.association_subscribers_subscriptions]) 
             
         association_moderates_moderators = db.relationship('association_moderates_moderators', cascade="all, delete-orphan", back_populates='moderates')
         @property
         def moderators(self):
             
-            return moderatorsList(self, [x.moderators for x in self.association_moderates_moderators]) 
+            return Category.moderatorsList(self, [x.moderators for x in self.association_moderates_moderators]) 
             
         association_categories_events = db.relationship('association_categories_events', cascade="all, delete-orphan", back_populates='categories')
         @property
         def events(self):
             
-            return eventsList(self, [x.events for x in self.association_categories_events]) 
+            return Category.eventsList(self, [x.events for x in self.association_categories_events]) 
             
         
     
         def __delete__(self, db):
             db.session.delete(self)  
     
-    class subscribersList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_subscribers_subscriptions(subscriptions=self._this,subscribers=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_subscribers_subscriptions.query.filter_by(subscriptions=self._this,subscribers=e).first()
-            db.session.delete(v)
-    class moderatorsList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_moderates_moderators(moderates=self._this,moderators=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_moderates_moderators.query.filter_by(moderates=self._this,moderators=e).first()
-            db.session.delete(v)
-    class eventsList(list):
-        
-        def __init__(self,this):
-            self._this = this
-            super().__init__()
-        
-        def __init__(self,this, __iterable):
-            self._this = this
-            super().__init__(__iterable)
-        
-        def append(self,e):
-            v = association_categories_events(categories=self._this,events=e)
-            db.session.add(v)
-            super().append(e)
-        
-        def remove(self,e):
-            super().remove(e)
-            v = association_categories_events.query.filter_by(categories=self._this,events=e).first()
-            db.session.delete(v)
-    
-    
     
     
     
     @Secure(EventPlatformNAGSecurityModel,EventPlatformNAGPrivacyModel)
     class Ad(db.Model,OCLTerm):
+        
+        # Association-end type classes
+        
 
         # Attributes
         id = db.Column(db.Integer, primary_key=True)
@@ -593,6 +690,124 @@ with app.app_context():
     
         def __delete__(self, db):
             db.session.delete(self)  
+    
+    
+    
+    
+    @Secure(EventPlatformNAGSecurityModel,EventPlatformNAGPrivacyModel)
+    class Invite(db.Model,OCLTerm):
+        
+        # Association-end type classes
+        class inviteeList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_invitations_invitee(invitations=self._this,invitee=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_invitations_invitee.query.filter_by(invitations=self._this,invitee=e).first()
+                db.session.delete(v)
+        class invitedByList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_invitedby_invites(invites=self._this,invitedBy=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_invitedby_invites.query.filter_by(invites=self._this,invitedBy=e).first()
+                db.session.delete(v)
+        class eventList(list):
+            
+            def __init__(self,this):
+                self._this = this
+                super().__init__()
+            
+            def __init__(self,this, __iterable):
+                self._this = this
+                super().__init__(__iterable)
+            
+            def append(self,e):
+                v = association_event_invitations(invitations=self._this,event=e)
+                db.session.add(v)
+                super().append(e)
+            
+            def remove(self,e):
+                super().remove(e)
+                v = association_event_invitations.query.filter_by(invitations=self._this,event=e).first()
+                db.session.delete(v)
+        
+
+        # Attributes
+        id = db.Column(db.Integer, primary_key=True)
+        
+        # Association ends
+        association_invitations_invitee = db.relationship('association_invitations_invitee', cascade="all, delete-orphan", back_populates='invitations', uselist=False)
+        @property
+        def invitee(self):
+            return self.association_invitations_invitee.invitee if self.association_invitations_invitee else None
+
+        @invitee.setter
+        def invitee(self, value):
+            if self.association_invitations_invitee:
+                self.association_invitations_invitee.invitee = value
+            else:
+                v = association_invitations_invitee(invitations=self,invitee=value)
+                db.session.add(v)
+            
+        association_invitedby_invites = db.relationship('association_invitedby_invites', cascade="all, delete-orphan", back_populates='invites', uselist=False)
+        @property
+        def invitedBy(self):
+            return self.association_invitedby_invites.invitedBy if self.association_invitedby_invites else None
+
+        @invitedBy.setter
+        def invitedBy(self, value):
+            if self.association_invitedby_invites:
+                self.association_invitedby_invites.invitedBy = value
+            else:
+                v = association_invitedby_invites(invites=self,invitedBy=value)
+                db.session.add(v)
+            
+        association_event_invitations = db.relationship('association_event_invitations', cascade="all, delete-orphan", back_populates='invitations', uselist=False)
+        @property
+        def event(self):
+            return self.association_event_invitations.event if self.association_event_invitations else None
+
+        @event.setter
+        def event(self, value):
+            if self.association_event_invitations:
+                self.association_event_invitations.event = value
+            else:
+                v = association_event_invitations(invitations=self,event=value)
+                db.session.add(v)
+            
+        
+    
+        def __delete__(self, db):
+            db.session.delete(self)  
+    
+    
+    
+    
     
     
     
