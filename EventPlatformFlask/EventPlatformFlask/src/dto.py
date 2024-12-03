@@ -171,7 +171,9 @@ class PersonDTO:
                         attends=EventDTO._clones(copy.attends),
                         requests=EventDTO._clones(copy.requests),
                         subscriptions=CategoryDTO._clones(copy.subscriptions),
-                        moderates=CategoryDTO._clones(copy.moderates))
+                        moderates=CategoryDTO._clones(copy.moderates),
+                        invitations=InviteDTO._clones(copy.invitations),
+                        invites=InviteDTO._clones(copy.invites))
             if not bulk:
                     _clear_cache()
             return r
@@ -194,7 +196,9 @@ class PersonDTO:
                 attends=[],
                 requests=[],
                 subscriptions=[],
-                moderates=[]):
+                moderates=[],
+                invitations=[],
+                invites=[]):
         self.id=id
         self.name=name
         self.surname=surname
@@ -205,27 +209,34 @@ class PersonDTO:
         self.roles=list(set(roles))
         self.events=list(set(events))
         for e in events:
-                e.owner=self
+            e.owner=self
         self.manages=list(set(manages))
         for e in manages:
-                if self not in e.managedBy:
-                        e.managedBy.append(self)
+            if self not in e.managedBy:
+                e.managedBy.append(self)
         self.attends=list(set(attends))
         for e in attends:
-                if self not in e.attendants:
-                        e.attendants.append(self)
+            if self not in e.attendants:
+                e.attendants.append(self)
         self.requests=list(set(requests))
         for e in requests:
-                if self not in e.requesters:
-                        e.requesters.append(self)
+            if self not in e.requesters:
+                e.requesters.append(self)
         self.subscriptions=list(set(subscriptions))
         for c in subscriptions:
-                if self not in c.subscribers:
-                        c.subscribers.append(self)
+            if self not in c.subscribers:
+                c.subscribers.append(self)
         self.moderates=list(set(moderates))
         for c in moderates:
-                if self not in c.moderators:
-                        c.moderators.append(self)
+            if self not in c.moderators:
+                c.moderators.append(self)
+        self.invitations=list(set(invitations))
+        for i in invitations:
+            i.invitee=self
+        self.invites=list(set(invites))
+        for i in invites:
+            i.invitedBy=self
+
     @property
     def role(self):
         return self.roles[0]
@@ -288,7 +299,8 @@ class EventDTO:
                      categories=CategoryDTO._clones(copy.categories),
                      managedBy=PersonDTO._clones(copy.managedBy),
                      attendants=PersonDTO._clones(copy.attendants),
-                     requesters=PersonDTO._clones(copy.requesters))
+                     requesters=PersonDTO._clones(copy.requesters),
+                     invitations=InviteDTO._clones(copy.invitations))
         if not bulk:
             _clear_cache()
         return r
@@ -305,7 +317,8 @@ class EventDTO:
                 categories=[],
                 managedBy=[],
                 attendants=[],
-                requesters=[]):
+                requesters=[],
+                invitations=[]):
         self.id=id
         self.title=title
         self.description=description
@@ -326,6 +339,9 @@ class EventDTO:
         for u in requesters:
                 if self not in u.requests:
                         u.requests.append(self)
+        self.invitations=list(set(invitations))
+        for i in invitations:
+            i.event=self
 
 class CategoryDTO:
     _cache = {}
@@ -376,6 +392,49 @@ class CategoryDTO:
                         e.categories.append(self)
 
 
+class InviteDTO:
+    _cache = {}
+
+    def _clone(clone):
+        if not clone.id in InviteDTO._cache:
+            InviteDTO._cache[clone.id] = InviteDTO(clone.id) 
+        return InviteDTO._cache[clone.id]
+       
+
+    def _clones(clones):
+        return list(map(lambda o: InviteDTO._clone(o),clones))
+
+    def copy(copy, bulk=False):
+        r = InviteDTO(copy.id,
+                     event=EventDTO._clone(copy.event),
+                     invitee=PersonDTO._clone(copy.invitee),
+                     invitedBy=PersonDTO._clone(copy.invitedBy))
+        if not bulk:
+                _clear_cache()
+        return r
+
+    def copies(copies):
+        r = list(map(lambda o: InviteDTO.copy(o,bulk=True),copies))
+        _clear_cache()
+        return r
+
+    def __init__(self,id,
+                event=RESTRICTED,
+                invitee=RESTRICTED,
+                invitedBy=RESTRICTED):
+        self.id=id
+        self.event=event
+        if event != RESTRICTED:
+            if self not in event.invitations:
+                event.invitations.append(self)
+        self.invitee=invitee
+        if invitee != RESTRICTED:
+            if self not in invitee.invitations:
+                invitee.invitations.append(self)
+        self.invitedBy=invitedBy
+        if invitedBy != RESTRICTED:
+            if self not in invitedBy.invites:
+                invitedBy.invites.append(self)
 
 
 
