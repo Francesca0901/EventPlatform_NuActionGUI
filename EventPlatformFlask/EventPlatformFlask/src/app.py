@@ -1,6 +1,6 @@
 from flask import Flask, render_template, redirect, url_for, Response, request, jsonify
 from flask_user import UserManager, user_registered, user_logged_in, current_user
-from model import db, Person, Role, Purpose, REGULARUSER, MODERATOR, ADMIN, Consent, Ad, AnyPurpose, FunctionalPurpose, MarketingPurpose, AnalyticsPurpose, CorePurpose, RecommendEventsPurpose, TargetedMarketingPurpose, MassMarketingPurpose
+from model import db, Person, Role, Purpose, REGULARUSER, MODERATOR, ADMIN, Consent, Ad, AnyPurpose, FunctionalPurpose, MarketingPurpose, AnalyticsPurpose, CorePurpose, RecommendEventsPurpose, TargetedMarketingPurpose, MassMarketingPurpose, InsightsPurpose, StatsPurpose
 from project import SecurityException, PrivacyException, init
 from flask_principal import Principal, Identity, identity_loaded, identity_changed
 
@@ -23,7 +23,9 @@ PURPOSES = [
     CorePurpose,
     RecommendEventsPurpose,
     TargetedMarketingPurpose,
-    MassMarketingPurpose
+    MassMarketingPurpose,
+    InsightsPurpose,
+    StatsPurpose
 ]
 
 ROLES = [
